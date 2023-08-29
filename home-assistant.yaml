@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: home-assistant
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: home-assistant
+  namespace: home-assistant
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: home-assistant
+  template:
+    metadata:
+      labels:
+        app: home-assistant
+    spec:
+      containers:
+        - name: home-assistant
+          image: ghcr.io/home-assistant/home-assistant:stable
+          env:
+            - name: TZ
+              value: Europe/Copenhagen
+          volumeMounts:
+            - name: config-volume
+              mountPath: /config
+      volumes:
+        - name: config-volume
+          persistentVolumeClaim:
+            claimName: home-assistant-config
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: home-assistant-config
+  namespace: home-assistant
+spec:
+  storageClassName: longhorn
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: home-assistant-metallb
+  namespace: home-assistant
+spec:
+  type: LoadBalancer  # Change service type to LoadBalancer for MetalLB
+  selector:
+    app: home-assistant
+  ports:
+    - port: 80  # Expose port 80
+      targetPort: 8123  # Point to your Home Assistant container port

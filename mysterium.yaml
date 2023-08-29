@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysterium-dvpn-node-pvc
+  namespace: mysterium
+spec:
+  storageClassName: longhorn
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 512Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysterium-dvpn-node
+  namespace: mysterium
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysterium-dvpn-node
+  template:
+    metadata:
+      labels:
+        app: mysterium-dvpn-node
+    spec:
+      containers:
+        - name: mysterium-dvpn-node
+          image: docker.io/mysteriumnetwork/myst:latest
+          ports:
+            - containerPort: 4449
+          securityContext:
+            privileged: true
+            capabilities:
+              add:
+                - NET_ADMIN
+          command: ["/usr/local/bin/docker-entrypoint.sh", "service", "--agreed-terms-and-conditions"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              cpu: 2
+              memory: 2048Mi
+          volumeMounts:
+            - name: mysterium-dvpn-node-pvc
+              mountPath: /var/lib/mysterium-node
+      volumes:
+        - name: mysterium-dvpn-node-pvc
+          persistentVolumeClaim:
+            claimName: mysterium-dvpn-node-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysterium-dvpn-node-svc
+  namespace: mysterium
+spec:
+  type: LoadBalancer  # Use LoadBalancer type for MetalLB
+  ports:
+    - name: http
+      port: 80  # Expose on port 80
+      targetPort: 4449
+  selector:
+    app: mysterium-dvpn-node
