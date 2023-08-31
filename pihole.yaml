@@ -1,0 +1,120 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: pihole-namespace
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pihole-deployment
+  namespace: pihole-namespace
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pihole
+  template:
+    metadata:
+      labels:
+        app: pihole
+    spec:
+      containers:
+        - name: pihole
+          image: pihole/pihole:latest
+          ports:
+            - containerPort: 53
+              protocol: TCP
+            - containerPort: 53
+              protocol: UDP
+            - containerPort: 67
+              protocol: UDP
+            - containerPort: 80
+              protocol: TCP
+          env:
+            - name: TZ
+              value: 'Europe/Copenhagen'
+          volumeMounts:
+            - name: etc-pihole-volume
+              mountPath: /etc/pihole
+            - name: etc-dnsmasq-volume
+              mountPath: /etc/dnsmasq.d
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+      volumes:
+        - name: etc-pihole-volume
+          persistentVolumeClaim:
+            claimName: etc-pihole-pvc
+        - name: etc-dnsmasq-volume
+          persistentVolumeClaim:
+            claimName: etc-dnsmasq-pvc
+      restartPolicy: Always
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: pihole-service
+  namespace: pihole-namespace
+spec:
+  selector:
+    app: pihole
+  ports:
+    - name: dns-tcp
+      port: 53
+      targetPort: 53
+      protocol: TCP
+    - name: dns-udp
+      port: 53
+      targetPort: 53
+      protocol: UDP
+    - name: dhcp
+      port: 67
+      targetPort: 67
+      protocol: UDP
+    - name: http
+      port: 80
+      targetPort: 80
+      protocol: TCP
+  type: LoadBalancer
+
+---
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: longhorn
+  namespace: pihole-namespace
+provisioner: driver.longhorn.io
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: etc-pihole-pvc
+  namespace: pihole-namespace
+spec:
+  storageClassName: longhorn
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: etc-dnsmasq-pvc
+  namespace: pihole-namespace
+spec:
+  storageClassName: longhorn
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
