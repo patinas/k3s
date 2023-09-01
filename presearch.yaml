@@ -1,0 +1,27 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: presearch-node
+  namespace: crypto
+spec:
+  # How many replicas to run?
+  replicas: 1
+  selector:
+    matchLabels:
+      app: presearch-node
+  template:
+    metadata:
+      labels:
+        app: presearch-node
+        version: "0.8.25-testnet"
+    spec:
+      containers:
+      - name: presearch-node
+        image: presearch/node:latest
+        env:
+        - name: REGISTRATION_CODE
+          valueFrom:
+            secretKeyRef:
+              name: presearch
+              key: registration-code
