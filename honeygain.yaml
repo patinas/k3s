@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: honeygain-pod
+  namespace: crypto
+spec:
+  containers:
+    - name: honeygain-container
+      image: honeygain/honeygain
+      args:
+        - -tou-accept
+        - -email
+        - EMAIL
+        - -pass
+        - PASSWORD
+        - -device
+        - k3s
